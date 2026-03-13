@@ -26,7 +26,7 @@ auth.post('/github/callback', async (c) => {
   try {
     const body = await c.req.json()
     
-    const validation = authCallbackSchema .safeParse(body)
+    const validation = authCallbackSchema.safeParse(body)
     
     if (!validation.success) {
       return c.json({ 
