@@ -1,12 +1,12 @@
 import { Hono } from 'hono'
 import { sign, verify } from 'hono/jwt'
-import { PrismaClient } from '@prisma/client' 
-import { authCallbackSchema } from '../utils/validation.js'
-import { getGitHubUserByCode, GitHubServiceError } from '../services/github.js'
+import prisma from '../lib/prisma.js'
+import { authCallbackSchema  } from '../utils/validation.js'
 
-const prisma = new PrismaClient() 
 const auth = new Hono()
 
+
+// Mock данные
 const MOCK_USERS: Record<string, { id: string; email: string; name: string }> = {
   'test_code': {
     id: '12345',
@@ -25,7 +25,7 @@ auth.post('/github/callback', async (c) => {
   try {
     const body = await c.req.json()
     
-    const validation = authCallbackSchema.safeParse(body)
+    const validation = authCallbackSchema .safeParse(body)
     
     if (!validation.success) {
       return c.json({ 
@@ -36,49 +36,47 @@ auth.post('/github/callback', async (c) => {
 
     const { code } = validation.data
 
-    let githubUser;
+    let githubUser
 
     // Mock режим для тестирования
     if (code.startsWith('test_')) {
+      
       githubUser = MOCK_USERS[code]
       
       if (!githubUser) {
-        throw new GitHubServiceError(
-          `Invalid test code: ${code}`,
-          400
-        );
+        githubUser = {
+          id: `mock_${Date.now()}`,
+          email: `user_${code}@example.com`,
+          name: `User ${code}`
+        }
       }
     } else {
-      githubUser = await getGitHubUserByCode(code)
-    }
-
-    // Подготавливаем данные для сохранения с значениями по умолчанию
-    const userData = {
-      githubId: githubUser.id.toString(),
-      name: githubUser.name ?? 'Unknown User', 
-      email: githubUser.email ?? `user-${githubUser.id}@no-email.github` 
+      return c.json({ 
+        error: 'Real GitHub OAuth not implemented. Use test_* codes for testing.' 
+      }, 501)
     }
 
     // Сохраняем в базу данных
     const user = await prisma.user.upsert({
-      where: { githubId: userData.githubId },
+      where: { githubId: githubUser.id },
       update: {
-        name: userData.name,
-        email: userData.email
+        name: githubUser.name,
+        email: githubUser.email
       },
       create: {
-        githubId: userData.githubId,
-        name: userData.name,
-        email: userData.email
+        githubId: githubUser.id,
+        name: githubUser.name,
+        email: githubUser.email
       }
     })
+
 
     // Создаем JWT токен
     const payload = {
       sub: user.id,
       githubId: user.githubId,
       email: user.email,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 дней
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
     }
 
     const secret = process.env.JWT_SECRET || 'dev-secret-key'
@@ -98,15 +96,6 @@ auth.post('/github/callback', async (c) => {
 
   } catch (error) {
     console.error('Auth error:', error)
-    
-    // Обработка ошибок GitHub сервиса
-    if (error instanceof GitHubServiceError) {
-      return c.json({ 
-        success: false,
-        error: error.message
-      }, error.statusCode)
-    }
-    
     return c.json({ 
       success: false,
       error: 'Internal server error',
