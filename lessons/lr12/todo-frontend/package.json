@@ -1,0 +1,26 @@
+{
+  "name": "lr12-todo-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:sw && vite",
+    "build:sw": "esbuild src/sw.ts --bundle --format=iife --target=es2020 --outfile=public/sw.js",
+    "sw:watch": "esbuild src/sw.ts --bundle --format=iife --target=es2020 --outfile=public/sw.js --watch",
+    "build": "npm run build:sw && tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

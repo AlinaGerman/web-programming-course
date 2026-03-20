@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Examples - PWA & Offline-first</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #1f2937;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header {
+      background: #fff;
+      border-radius: 10px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 14px 36px rgba(0,0,0,.2);
+    }
+    h1 { color: #0f172a; margin-bottom: 8px; }
+    .subtitle { color: #475569; }
+    #search {
+      margin-top: 16px;
+      width: 100%;
+      border: 2px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 16px;
+      padding: 10px 12px;
+    }
+    #search:focus { outline: none; border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,.15); }
+    .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .tag {
+      border: 2px solid #cbd5e1;
+      border-radius: 20px;
+      padding: 6px 12px;
+      cursor: pointer;
+      background: #fff;
+      color: #0f172a;
+      font-size: 14px;
+    }
+    .tag.active { background: #0f766e; border-color: #0f766e; color: #fff; }
+    .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 12px 30px rgba(0,0,0,.22);
+    }
+    .card-head {
+      background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+      color: #fff;
+      padding: 14px;
+    }
+    .card-title { font-weight: 600; margin-bottom: 6px; }
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,.2);
+    }
+    .card-body { padding: 14px; }
+    .desc { color: #475569; margin-bottom: 10px; font-size: 14px; line-height: 1.45; }
+    pre {
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 10px;
+      overflow-x: auto;
+    }
+    code { font-family: "Courier New", monospace; font-size: 13px; }
+    .hljs { background: #1e1e1e !important; }
+    .pagination { display: flex; gap: 8px; justify-content: center; margin: 24px 0; }
+    .pagination button { border: 0; border-radius: 4px; padding: 8px 11px; cursor: pointer; background: #334155; color: #fff; }
+    .pagination button.active { background: #0f766e; }
+    #notFound { display: none; text-align: center; color: #e2e8f0; padding: 36px; }
+    footer { margin-top: 14px; text-align: center; color: #e2e8f0; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>PWA & Offline-first — Interactive Examples</h1>
+      <p class="subtitle">Service Worker, Cache, Offline Queue, Manifest, Testing</p>
+      <input id="search" placeholder="Поиск по названию, описанию или коду..." />
+      <div class="filters">
+        <span class="tag active" data-filter="all">Все</span>
+        <span class="tag" data-filter="pwa">PWA</span>
+        <span class="tag" data-filter="sw">Service Worker</span>
+        <span class="tag" data-filter="offline">Offline</span>
+        <span class="tag" data-filter="manifest">Manifest</span>
+        <span class="tag" data-filter="testing">Testing</span>
+      </div>
+    </header>
+
+    <div id="cards" class="grid"></div>
+    <div id="pagination" class="pagination"></div>
+    <div id="notFound">
+      <h3>Ничего не найдено</h3>
+      <p>Измените фильтр или поисковый запрос</p>
+    </div>
+
+    <footer>PWA & Offline-first</footer>
+  </div>
+
+  <script>
+    const examples = [
+      {
+        id: 1,
+        title: 'Регистрация Service Worker',
+        category: 'sw',
+        description: 'Подключение SW после загрузки страницы',
+        code: `if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    await navigator.serviceWorker.register('/sw.js');
+  });
+}`
+      },
+      {
+        id: 2,
+        title: 'Install event и pre-cache',
+        category: 'sw',
+        description: 'Кэширование базовых ресурсов при установке SW',
+        code: `self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open('app-v1').then((cache) => cache.addAll([
+      '/', '/index.html', '/offline.html'
+    ]))
+  );
+});`
+      },
+      {
+        id: 3,
+        title: 'Fetch fallback при offline',
+        category: 'offline',
+        description: 'Возвращаем offline-страницу при сетевой ошибке',
+        code: `self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match('/offline.html'))
+  );
+});`
+      },
+      {
+        id: 4,
+        title: 'Cache-first стратегия',
+        category: 'sw',
+        description: 'Сначала кэш, затем сеть',
+        code: `event.respondWith(
+  caches.match(event.request).then((cached) => {
+    return cached || fetch(event.request);
+  })
+);`
+      },
+      {
+        id: 5,
+        title: 'Offline queue через localStorage',
+        category: 'offline',
+        description: 'Сохраняем действия пользователя без сети',
+        code: `function pushOffline(item) {
+  const q = JSON.parse(localStorage.getItem('offline_queue') ?? '[]');
+  q.push(item);
+  localStorage.setItem('offline_queue', JSON.stringify(q));
+}`
+      },
+      {
+        id: 6,
+        title: 'Sync после reconnect',
+        category: 'offline',
+        description: 'Отправка накопленных действий после возврата online',
+        code: `window.addEventListener('online', async () => {
+  const q = JSON.parse(localStorage.getItem('offline_queue') ?? '[]');
+  for (const item of q) {
+    await fetch(item.url, { method: item.method, body: JSON.stringify(item.body) });
+  }
+  localStorage.setItem('offline_queue', '[]');
+});`
+      },
+      {
+        id: 7,
+        title: 'Manifest минимум',
+        category: 'manifest',
+        description: 'Базовый webmanifest для installability',
+        code: `{
+  "name": "Offline App",
+  "short_name": "OfflineApp",
+  "start_url": "/",
+  "display": "standalone",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}`
+      },
+      {
+        id: 8,
+        title: 'Подключение manifest',
+        category: 'manifest',
+        description: 'link + theme-color в HTML',
+        code: `<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0f172a" />`
+      },
+      {
+        id: 9,
+        title: 'DevTools: что проверять',
+        category: 'testing',
+        description: 'Ключевые места в Chrome DevTools для PWA',
+        code: `Application -> Service Workers
+Application -> Manifest
+Application -> Storage
+Network -> Offline`
+      },
+      {
+        id: 10,
+        title: 'Lighthouse PWA проверка',
+        category: 'testing',
+        description: 'Минимальный аудит installability/offline',
+        code: `Open DevTools -> Lighthouse
+Select category: Progressive Web App
+Run audit`
+      },
+      {
+        id: 11,
+        title: 'Критерии PWA',
+        category: 'pwa',
+        description: 'Три базовых критерия PWA',
+        code: `Installable
+Fast
+Reliable`
+      },
+      {
+        id: 12,
+        title: 'Service Worker контекст',
+        category: 'pwa',
+        description: 'Где SW может работать',
+        code: `Service Worker работает в:
+- HTTPS
+- localhost
+
+В небезопасном HTTP-контексте SW не регистрируется.`
+      }
+    ];
+
+    let filter = 'all';
+    let page = 1;
+    const perPage = 6;
+
+    function escapeHtml(s) {
+      const el = document.createElement('div');
+      el.textContent = s;
+      return el.innerHTML;
+    }
+
+    function getFiltered() {
+      const q = document.getElementById('search').value.toLowerCase();
+      return examples.filter((e) => {
+        const f = filter === 'all' || e.category === filter;
+        const s = !q || e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q) || e.code.toLowerCase().includes(q);
+        return f && s;
+      });
+    }
+
+    function renderPagination(totalPages) {
+      const root = document.getElementById('pagination');
+      root.innerHTML = '';
+      if (totalPages <= 1) return;
+
+      for (let i = 1; i <= totalPages; i += 1) {
+        const b = document.createElement('button');
+        b.textContent = String(i);
+        if (i === page) b.className = 'active';
+        b.addEventListener('click', () => {
+          page = i;
+          render();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        root.appendChild(b);
+      }
+    }
+
+    function render() {
+      const data = getFiltered();
+      const totalPages = Math.ceil(data.length / perPage);
+      const start = (page - 1) * perPage;
+      const chunk = data.slice(start, start + perPage);
+      const cards = document.getElementById('cards');
+      cards.innerHTML = '';
+
+      if (chunk.length === 0) {
+        document.getElementById('notFound').style.display = 'block';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+
+      document.getElementById('notFound').style.display = 'none';
+
+      chunk.forEach((e) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-head">
+            <div class="card-title">${e.title}</div>
+            <span class="badge">${e.category.toUpperCase()}</span>
+          </div>
+          <div class="card-body">
+            <p class="desc">${e.description}</p>
+            <pre><code class="language-typescript">${escapeHtml(e.code)}</code></pre>
+          </div>
+        `;
+        cards.appendChild(card);
+      });
+
+      hljs.highlightAll();
+      renderPagination(totalPages);
+    }
+
+    document.getElementById('search').addEventListener('input', () => {
+      page = 1;
+      render();
+    });
+
+    document.querySelectorAll('.tag').forEach((t) => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('.tag').forEach((x) => x.classList.remove('active'));
+        t.classList.add('active');
+        filter = t.dataset.filter;
+        page = 1;
+        render();
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>

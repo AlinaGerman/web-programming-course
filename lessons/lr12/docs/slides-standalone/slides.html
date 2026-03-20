@@ -1,0 +1,268 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LR12: PWA & Offline-first</title>
+    <link rel="stylesheet" href="reset.css" />
+    <link rel="stylesheet" href="reveal.css" />
+    <link rel="stylesheet" href="black.css" />
+    <link rel="stylesheet" href="monokai.css" />
+    <style>
+      .reveal h1,
+      .reveal h2,
+      .reveal h3 {
+        text-transform: none;
+      }
+      .reveal ul,
+      .reveal ol,
+      .reveal p {
+        text-align: left;
+      }
+      .reveal pre {
+        width: 100%;
+        font-size: 0.56em;
+      }
+      .highlight-box {
+        background: rgba(100, 200, 255, 0.2);
+        padding: 14px;
+        border-radius: 8px;
+        border-left: 4px solid #64c8ff;
+        margin: 14px 0;
+      }
+      .danger-box {
+        background: rgba(255, 100, 100, 0.2);
+        padding: 14px;
+        border-radius: 8px;
+        border-left: 4px solid #ff6464;
+        margin: 14px 0;
+      }
+      .success-box {
+        background: rgba(100, 255, 100, 0.2);
+        padding: 14px;
+        border-radius: 8px;
+        border-left: 4px solid #64ff64;
+        margin: 14px 0;
+      }
+      .small {
+        font-size: 0.82em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section>
+          <h1>LR12: PWA & Offline-first</h1>
+          <h3>Progressive Web Apps для реальной сети</h3>
+          <div class="highlight-box small">
+            Цель: сделать приложение устанавливаемым (installable), быстрым и устойчивым к offline-сценариям.
+          </div>
+        </section>
+
+        <section>
+          <h2>План занятия</h2>
+          <ol>
+            <li>PWA концепция и offline-first</li>
+            <li>Service Worker и жизненный цикл (lifecycle)</li>
+            <li>Кэш-стратегии и fallback</li>
+            <li>Offline data + sync</li>
+            <li>Manifest и установка</li>
+            <li>Проверка в DevTools/Lighthouse</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>Что такое PWA</h2>
+          <ul>
+            <li>Веб-приложение с нативными привычками</li>
+            <li>Устанавливаемое (installable) через браузер</li>
+            <li>Работает лучше при нестабильной сети</li>
+          </ul>
+          <p class="small">PWA = не только иконка, но и надежный offline-сценарий.</p>
+        </section>
+
+        <section>
+          <h2>Почему offline-first важен</h2>
+          <div class="danger-box">
+            Интернет нестабилен. Пользователь оценивает приложение, а не качество сети.
+          </div>
+          <ul>
+            <li>Снижаем риск потери данных</li>
+            <li>Держим предсказуемый UX</li>
+            <li>Уменьшаем фрустрацию при обрывах</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Критерии PWA</h2>
+          <ul>
+            <li><strong>Installable</strong> - устанавливаемое</li>
+            <li><strong>Fast</strong> - быстрое</li>
+            <li><strong>Reliable</strong> - надежное</li>
+          </ul>
+          <div class="success-box small">В LR12 мы целимся именно в эти три критерия.</div>
+        </section>
+
+        <section>
+          <h2>Service Worker: роль</h2>
+          <ul>
+            <li>Перехватывает запросы</li>
+            <li>Управляет кэшем</li>
+            <li>Отдает fallback при offline</li>
+          </ul>
+          <p class="small">Работает только в HTTPS/localhost и не управляет DOM напрямую.</p>
+        </section>
+
+        <section>
+          <h2>Жизненный цикл (lifecycle) Service Worker</h2>
+          <ol>
+            <li>register</li>
+            <li>install</li>
+            <li>activate</li>
+            <li>fetch</li>
+          </ol>
+          <p class="small">Понимание жизненного цикла (lifecycle) помогает объяснить "почему старая версия еще активна".</p>
+        </section>
+
+        <section>
+          <h2>Стратегии кэширования</h2>
+          <ul>
+            <li>Cache-first</li>
+            <li>Network-first</li>
+            <li>Stale-while-revalidate</li>
+          </ul>
+          <p class="small">Одна стратегия на все запросы обычно дает плохой результат.</p>
+        </section>
+
+        <section>
+          <h2>Offline fallback</h2>
+          <ul>
+            <li><code>offline.html</code> вместо "белого экрана"</li>
+            <li>Понятное сообщение для пользователя</li>
+            <li>Контролируемый UX при сетевой ошибке</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Где хранить offline-данные</h2>
+          <ul>
+            <li><strong>localStorage</strong>: проще, но ограниченно</li>
+            <li><strong>IndexedDB</strong>: гибче и лучше для очередей</li>
+          </ul>
+          <p class="small">Для offline-queue предпочтительнее IndexedDB.</p>
+        </section>
+
+        <section>
+          <h2>Синхронизация после reconnect</h2>
+          <ol>
+            <li>Сохраняем действие offline</li>
+            <li>Ждем online</li>
+            <li>Отправляем очередь</li>
+            <li>Очищаем успешно синхронизированное</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>Web App Manifest</h2>
+          <ul>
+            <li><code>name</code>, <code>short_name</code></li>
+            <li><code>start_url</code>, <code>display</code></li>
+            <li><code>icons</code> 192 и 512</li>
+          </ul>
+          <p class="small">Manifest — обязательный элемент возможности установки.</p>
+        </section>
+
+        <section>
+          <h2>Предложение установки (install prompt) и UX</h2>
+          <ul>
+            <li>Не спамить предложением установки сразу</li>
+            <li>Показывать после понятного действия</li>
+            <li>Объяснять пользу установки</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Проверка в DevTools</h2>
+          <ul>
+            <li>Application -> Service Workers</li>
+            <li>Application -> Manifest</li>
+            <li>Network -> Offline</li>
+          </ul>
+          <pre><code class="language-text">Проверяем не только online,
+но и реальный offline-сценарий.</code></pre>
+        </section>
+
+        <section>
+          <h2>Lighthouse как sanity-check</h2>
+          <ul>
+            <li>Быстрая проверка PWA критериев</li>
+            <li>Показывает явные пробелы</li>
+            <li>Не заменяет ручной сценарий</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Практический план LR12</h2>
+          <ol>
+            <li>Service Worker Setup</li>
+            <li>Offline Support</li>
+            <li>Manifest & Installation</li>
+            <li>Testing</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>Checkpoint 1: Service Worker</h2>
+          <ul>
+            <li>Есть <code>sw.js</code> и регистрация</li>
+            <li>Есть fallback <code>offline.html</code></li>
+            <li>Offline базово воспроизводим</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Checkpoint 2: Offline queue + sync</h2>
+          <ul>
+            <li>Действия не теряются offline</li>
+            <li>После reconnect идет отправка очереди</li>
+            <li>Результат воспроизводим руками</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Checkpoint 3-4: Install + Testing</h2>
+          <ul>
+            <li>Manifest корректный и приложение устанавливаемое (installable)</li>
+            <li>Проверка в DevTools</li>
+            <li>Базовый Lighthouse аудит</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Итоговые требования</h2>
+          <ol>
+            <li>SW активен</li>
+            <li>Fallback работает</li>
+            <li>Есть offline queue + sync</li>
+            <li>Manifest и installability корректны</li>
+            <li>Проверка подтверждена</li>
+          </ol>
+        </section>
+      </div>
+    </div>
+
+    <script src="reveal.js"></script>
+    <script src="highlight.js"></script>
+    <script src="markdown.js"></script>
+    <script src="notes.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        slideNumber: "c",
+        showSlideNumber: "all",
+        plugins: [RevealHighlight, RevealMarkdown, RevealNotes]
+      });
+    </script>
+  </body>
+</html>

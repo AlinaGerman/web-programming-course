@@ -1,0 +1,23 @@
+{
+  "name": "lr12-todo-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.9",
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.6.1",
+    "hono": "^4.11.9",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20.11.17",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
