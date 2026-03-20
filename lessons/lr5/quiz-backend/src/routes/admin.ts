@@ -12,6 +12,7 @@ admin.use('*', adminAuth);
 //Получить все вопросы с информацией
 admin.get('/questions', async (c: Context) => {
   try {
+    // Запрашиваем все вопросы из базы данных
     const questions = await prisma.question.findMany({
       select: {
         id: true,
@@ -22,7 +23,7 @@ admin.get('/questions', async (c: Context) => {
         createdAt: true,
         updatedAt: true,
         category: {
-          select: {
+          select: { // Подгружаем связанную категорию
             id: true,
             name: true,
             slug: true
@@ -30,7 +31,7 @@ admin.get('/questions', async (c: Context) => {
         },
         _count: {
           select: {
-            answers: true
+            answers: true // Подсчитываем количество ответов для каждого вопроса
           }
         }
       },
@@ -81,8 +82,9 @@ admin.get('/questions', async (c: Context) => {
 //Создать новый вопрос
 admin.post('/questions', async (c: Context) => {
   try {
+    // Парсим тело запроса (JSON) в JavaScript объект
     const body = await c.req.json();
-    
+    // Валидируем входные данные по схеме
     const validationResult = QuestionSchema.safeParse(body);
     
     if (!validationResult.success) {
@@ -93,6 +95,7 @@ admin.post('/questions', async (c: Context) => {
       }, 400);
     }
 
+    // Деструктурируем валидные данные из тела запроса
     const { text, type, points, categoryId, correctAnswer } = validationResult.data;
 
     const question = await prisma.question.create({
@@ -101,7 +104,7 @@ admin.post('/questions', async (c: Context) => {
         type,
         points,
         categoryId,
-        correctAnswer: correctAnswer ? JSON.stringify(correctAnswer) : undefined
+        correctAnswer: correctAnswer ? JSON.stringify(correctAnswer) : undefined // Ответ преобразуем в JSON строку
       },
       include: {
         category: {
@@ -149,7 +152,7 @@ admin.post('/questions', async (c: Context) => {
 //Обновить существующий вопрос
  admin.put('/questions/:id', async (c: Context) => {
   try {
-    const { id } = c.req.param();
+    const { id } = c.req.param(); // Получаем ID вопроса
     const body = await c.req.json();
 
     const validationResult = QuestionSchema.partial().safeParse(body);
@@ -230,7 +233,7 @@ admin.get('/answers/pending', async (c: Context) => {
           type: 'essay'
         }
       },
-      select: {
+      select: { // Указываем, какие поля из связанных таблиц нам нужно включить в ответ
         id: true,
         userAnswer: true,
         createdAt: true,
@@ -248,7 +251,7 @@ admin.get('/answers/pending', async (c: Context) => {
             }
           }
         },
-        question: {
+        question: { // Подгружаем сам вопрос
           select: {
             id: true,
             text: true,
@@ -316,7 +319,7 @@ admin.post('/answers/:id/grade', async (c: Context) => {
       }, 400);
     }
 
-    const { points } = validationResult.data;
+    const { points } = validationResult.data; // Получаем количество баллов
 
     const result = await prisma.$transaction(async (tx) => {
       // Находим ответ
@@ -353,6 +356,7 @@ admin.post('/answers/:id/grade', async (c: Context) => {
         }
       });
 
+      // Проверяем, все ли essay ответы имеют оценку
       const allEssaysGraded = sessionAnswers.every(a => a.score !== null);
 
       // Если все essay ответы проверены, обновляем общий счет сессии
@@ -440,19 +444,23 @@ admin.get('/students/:userId/stats', async (c: Context) => {
       }
     });
 
-    // Рассчитываем статистику
+    // Общее количество сессий
     const totalSessions = sessions.length;
     
+    // Создаем массив из баллов всех сессий, где балл больше 0
     const scores = sessions
       .map(s => s.score || 0)
       .filter(s => s > 0);
     
+    // Считаем средний балл
     const averageScore = scores.length > 0
       ? scores.reduce((sum, s) => sum + s, 0) / scores.length
       : 0;
 
+    // Количество ответов во всех сессиях
     const totalAnswers = sessions.reduce((sum, s) => sum + s._count.answers, 0);
 
+    // Последняя сессия
     const latestSession = sessions.length > 0 ? sessions[0] : null;
 
     return c.json({
@@ -461,9 +469,9 @@ admin.get('/students/:userId/stats', async (c: Context) => {
         userId,
         stats: {
           totalSessions,
-          averageScore: Number(averageScore.toFixed(2)),
+          averageScore: Number(averageScore.toFixed(2)), // Округляем до 2 знаков после запято
           totalAnswers,
-          latestSession: latestSession ? {
+          latestSession: latestSession ? { // Детали последней сессии, если она есть
             id: latestSession.id,
             score: latestSession.score,
             completedAt: latestSession.completedAt,

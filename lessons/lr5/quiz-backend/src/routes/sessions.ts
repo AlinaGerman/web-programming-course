@@ -21,10 +21,12 @@ sessions.post('/', async (c) => {
   try {
     // Получаем пользователя из контекста
     const user = (c as any).get('user') as SessionUser;
+    // Парсим тело запроса (JSON) в JavaScript объект
     const body = await c.req.json();
-    
+    // Валидируем входные данные по схеме
     const validationResult = createSessionSchema.safeParse(body);
     
+    // Если данные неверны, возвращаем ошибку
     if (!validationResult.success) {
       return c.json({ 
         success: false,
@@ -35,6 +37,7 @@ sessions.post('/', async (c) => {
     
     const { categoryId, questionCount } = validationResult.data;
     
+    // Считаем, сколько всего вопросов есть в выбранной категории.
     const questionsCount = await prisma.question.count({
       where: { categoryId }
     });
@@ -46,6 +49,7 @@ sessions.post('/', async (c) => {
       }, 404);
     }
     
+    // Определяем реальное количество вопросов. Если пользователь запросил больше, чем есть в базе, берем то, что есть
     const actualQuestionCount = Math.min(questionCount, questionsCount);
     
     const questions = await prisma.question.findMany({
@@ -59,9 +63,11 @@ sessions.post('/', async (c) => {
       }
     });
     
+    // Устанавливаем время истечения сессии (через 1 час от текущего момента)
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1);
-    
+     
+    // Создаем запись о сессии в базе данных.
     const session = await prisma.session.create({
       data: {
         userId: user.id,
@@ -112,8 +118,10 @@ sessions.post('/:id/answers', checkSessionAccess, async (c) => {
     
     const { questionId, userAnswer } = validationResult.data;
     
+    // Передаем логику обработки ответа
     const answer = await sessionService.submitAnswer(id, questionId, userAnswer);
     
+    // Возвращаем созданный ответ с его оценкой
     return c.json({ 
       success: true,
       data: {
@@ -169,7 +177,7 @@ sessions.get('/:id', checkSessionAccess, async (c) => {
       include: {
         answers: {
           include: {
-            question: true
+            question: true // Для каждого ответа подгружаем сам вопрос
           },
           orderBy: {
             createdAt: 'asc'
@@ -184,7 +192,8 @@ sessions.get('/:id', checkSessionAccess, async (c) => {
         error: 'Session not found'
       }, 404);
     }
-    
+  
+    // Подсчёт отвеченных вопросов
     const answeredQuestions = session.answers.filter(a => 
       a.userAnswer !== null && 
       (Array.isArray(a.userAnswer) ? a.userAnswer.length > 0 : a.userAnswer !== '')
@@ -232,6 +241,7 @@ sessions.post('/:id/submit', checkSessionAccess, async (c) => {
   try {
     const { id } = c.req.param();
     
+    // Проверяем статус сессии
     const session = await prisma.session.findUnique({
       where: { id },
       select: { status: true }
@@ -251,8 +261,10 @@ sessions.post('/:id/submit', checkSessionAccess, async (c) => {
       }, 400);
     }
     
+    // Вызываем метод сервиса для завершения сессии и подсчета итогового балла
     const completedSession = await sessionService.submitSession(id);
     
+    // После завершения снова запрашиваем сессию из базы со всеми данными для ответа клиенту
     const fullSession = await prisma.session.findUnique({
       where: { id: completedSession.id },
       include: {
@@ -268,11 +280,13 @@ sessions.post('/:id/submit', checkSessionAccess, async (c) => {
       throw new Error('Completed session not found');
     }
     
+    // Подсчёт отвеченных вопросов
     const answeredQuestions = fullSession.answers.filter(a => 
       a.userAnswer !== null && 
-      (Array.isArray(a.userAnswer) ? a.userAnswer.length > 0 : a.userAnswer !== '')
+      (Array.isArray(a.userAnswer) ? a.userAnswer.length > 0 : a.userAnswer !== '') 
     );
     
+    //Сбор статистики
     const summary = {
       totalScore: fullSession.score,
       correctAnswers: fullSession.answers.filter(a => a.isCorrect === true).length,

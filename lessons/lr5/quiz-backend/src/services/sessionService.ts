@@ -3,6 +3,7 @@ import { scoringService } from "./scoringService.js";
 
 
 export class SessionService {
+  //Отправка 1 ответа пользователя
   async submitAnswer(
     sessionId: string,
     questionId: string,
@@ -33,13 +34,15 @@ export class SessionService {
     });
   }
 
+  //Завершение сессии
   async submitSession(sessionId: string) {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx) => { //Транзакция - либо все операции успешно выполняются, либо не выполняется ни одна (все изменения откатываются)
       const session = await tx.session.findUnique({
         where: { id: sessionId },
         include: { answers: true }
       });
 
+      // Проверки на существование и актуальность сессии
       if (!session) throw new Error('Session not found');
       if (session.expiresAt < new Date()) throw new Error('Expired');
 

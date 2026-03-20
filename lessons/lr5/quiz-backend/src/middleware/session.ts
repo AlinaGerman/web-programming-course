@@ -5,6 +5,7 @@ import prisma from '../lib/prisma.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
 
+//описывает только тот набор данных, который безопасно хранить в сессии и передавать по сети
 export interface SessionUser {
   id: string;
   email: string;
@@ -53,15 +54,18 @@ async function getUserFromToken(c: Context): Promise<{ user?: SessionUser; error
 export async function authMiddleware(c: Context, next: Next) {
   const result = await getUserFromToken(c);
   
+  // Если в результате есть ошибка
   if (result.error) {
     return c.json({ 
       success: false,
       error: result.error
     }, 401);
   }
-  
+    
+  // Если пользователь найден, сохраняем его в контекст запроса для дальнейшего использования
   (c as any).set('user', result.user);
   
+  // Передаём управление следующему middleware или обработчику маршрута
   await next();
 }
 
@@ -114,6 +118,7 @@ export async function userGithubCallback(c: Context) {
 
     const githubUser = await getGitHubUserByCode(code);
     
+    // Проверяем наличие email
     if (!githubUser.email) {
       return c.json({
         success: false,
@@ -121,6 +126,7 @@ export async function userGithubCallback(c: Context) {
       }, 400);
     }
 
+    // Ищем пользователя в нашей базе данных по email, полученному от GitHub
     const user = await prisma.user.findUnique({
       where: { email: githubUser.email }
     });
@@ -132,6 +138,7 @@ export async function userGithubCallback(c: Context) {
       }, 404);
     }
 
+    // Генерируем JWT-токен для найденного пользователя
     const token = await generateUserToken(user.id);
 
     return c.json({

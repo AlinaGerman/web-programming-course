@@ -3,7 +3,9 @@ export class ScoringService {
   scoreMultipleSelect(correctAnswers: string[], studentAnswers: string[]): number { 
     let score = 0;
 
+    // Проходим по каждому ответу, который дал студент.
     for (const answer of studentAnswers) {
+        // Проверяем, есть ли текущий ответ студента в массиве правильных ответов.
         if (correctAnswers.includes(answer)) {
             score += 1; 
         } else {
