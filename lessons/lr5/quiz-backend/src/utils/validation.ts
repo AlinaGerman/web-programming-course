@@ -6,12 +6,9 @@ export const authCallbackSchema = z.object({
 
 // Валидации ответа пользователя на вопрос
 export const AnswerSchema = z.object({
-  questionId: z.string().uuid({ message: "Invalid question ID format" }),
-  userAnswer: z.union([
-    z.array(z.string()),  // multiple-select
-    z.string()             // essay
-  ]),
-  sessionId: z.string().uuid({ message: "Invalid session ID format" })
+  questionId: z.string().min(1,{ message: "Invalid question ID format" }),
+  userAnswer: z.union([z.array(z.string()), z.string()]),
+  sessionId: z.string().min(1,{ message: "Invalid session ID format" })
 });
 
 //Валидация правил начисления баллов
@@ -36,7 +33,7 @@ export const QuestionSchema = z.object({
     message: "Question type must be either 'multiple-select' or 'essay'" 
   }),
   points: z.number().min(1).max(100, { message: "Points must be between 1 and 100" }),
-  categoryId: z.string().uuid({ message: "Invalid category ID format" }),
+  categoryId: z.string().min(1,{ message: "Invalid category ID format" }),
   correctAnswer: z.union([
     z.array(z.string()),  // multiple-select
     z.string()             // essay
