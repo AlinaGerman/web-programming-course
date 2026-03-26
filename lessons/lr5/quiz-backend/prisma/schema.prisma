@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,7 +12,7 @@ model User {
   email     String    @unique
   name      String?
   githubId  String    @unique
-  role      String    @default("student") // "student" или "admin"
+  role      String    @default("student")
   sessions  Session[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -30,10 +30,10 @@ model Category {
 model Question {
   id             String   @id @default(cuid())
   text           String
-  type           String   // "single-select", "multiple-select", "essay"
+  type           String
   categoryId     String
   category       Category @relation(fields: [categoryId], references: [id])
-  correctAnswer  Json?    // Правильные ответы для автопроверки
+  correctAnswer  Json?
   points         Int      @default(1)
   answers        Answer[]
   createdAt      DateTime @default(now())
@@ -44,7 +44,7 @@ model Session {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id])
-  status      String    @default("in_progress") // "in_progress", "completed", "expired"
+  status      String    @default("in_progress")
   score       Float?
   startedAt   DateTime  @default(now())
   expiresAt   DateTime
@@ -65,13 +65,13 @@ model Answer {
   questionId String
   question   Question @relation(fields: [questionId], references: [id])
   userAnswer Json
-  score      Float?   // null если ещё не проверен (essay)
-  isCorrect  Boolean? // для автопроверки
+  score      Float?
+  isCorrect  Boolean?
   feedback   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([sessionId, questionId]) // один ответ на вопрос в сессии
+  @@unique([sessionId, questionId])
   @@index([sessionId])
   @@index([questionId])
 }

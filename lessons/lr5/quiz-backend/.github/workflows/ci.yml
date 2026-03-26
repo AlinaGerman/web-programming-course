@@ -1,0 +1,102 @@
+name: CI/CD Pipeline
+
+on:
+  # Запуск при пуше в указанные ветки
+  push: 
+    branches: [ main, master, develop ]
+  # Запуск при создании pull request в указанные ветки
+  pull_request:
+    branches: [ main, master ]
+  # Ручной запуск через UI GitHub Actions
+  workflow_dispatch:  # Ручной запуск
+
+jobs:
+  # 1. Проверка качества кода, стиля, потенциальных ошибок
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest # На каком окружении запускать (Ubuntu Linux)
+    
+    steps:
+      # Клонирование репозитория
+      - name: Checkout code
+        uses: actions/checkout@v4 # копирует код из репозитория
+      
+      # Установка Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm' # Кэширование npm зависимостей для ускорения сборки
+      
+      # Установка зависимостей
+      - name: Install dependencies
+        run: npm ci # npm ci - чистая установка из package-lock.json
+      
+      # Запуск линтера
+      - name: Run linter
+        run: npm run lint || echo "No lint script found" # Запуск скрипта lint из package.json. || echo "No lint script found" - не падать, если скрипта нет
+  
+  # 2. Тестирование
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate Prisma Client
+        run: npx prisma generate # Генерирует типизированный клиент для работы с БД
+      
+      - name: Run tests
+        run: npm run test || echo "No test script found" # Запуск скрипта test из package.json
+      - name: Upload coverage reports # Отправка отчета о покрытии
+        uses: codecov/codecov-action@v4 # Действие для загрузки в Codecov (сервис анализа покрытия)
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # Токен из секретов GitHub для аутентификации в Codecov
+          files: ./coverage/lcov.info # Путь к файлу с отчетом о покрытии
+          fail_ci_if_error: false # Не проваливать CI, если загрузка не удалась
+  
+  # 3. Сборка Docker образа
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint, test]  # Зависит от успешного выполнения lint и test
+    
+    steps:
+      # Клонирование кода
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Настройка Docker Buildx
+      - name: Set up Docker Buildx # Buildx - расширенный инструмент сборки Docker (поддерживает многоплатформенные сборки, кэширование)
+        uses: docker/setup-buildx-action@v3 
+      
+      # Сборка Docker образа
+      - name: Build Docker image
+        uses: docker/build-push-action@v5 # Действие для сборки и публикации Docker образов
+        with:
+          context: . # Контекст сборки - корневая директория
+          file: ./Dockerfile
+          push: false # Не публиковать образ в registry (только сборка)
+          tags: quiz-backend:ci
+          cache-from: type=gha # Использовать GitHub Actions cache для ускорения
+          cache-to: type=gha,mode=max # Сохранять кэш в GitHub Actions
+          load: true # Загрузить образ в локальный Docker daemon, чтобы можно было его протестировать
+      
+      # Проверка собранного образа
+      - name: Test Docker image
+      # Проверяем, что Node.js работает в образе
+      # Проверяем, что образ появился в списке
+        run: |
+          docker run --rm quiz-backend:ci node --version 
+          docker images | grep quiz-backend

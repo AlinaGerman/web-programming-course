@@ -42,7 +42,7 @@ export async function adminGithubCallback(c: Context) {
     }
 
     // Ищем пользователя в базе данных
-    let user = await prisma.user.findFirst({
+    const user = await prisma.user.findFirst({
       where: {
         OR: [
           { githubId: githubUser.id.toString() },

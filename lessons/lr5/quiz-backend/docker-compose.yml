@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: quiz-postgres # Имя контейнера для удобного обращения
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-quiz_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-quiz_password}
+      - POSTGRES_DB=${POSTGRES_DB:-quiz_db}
+    ports:
+      - "5432:5432" # PostgreSQL на хосте будет доступен на порту 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Проверка здоровья контейнера
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quiz_user} -d ${POSTGRES_DB:-quiz_db}"]
+      interval: 10s # Интервал между проверками
+      timeout: 5s # Таймаут выполнения команды
+      retries: 5 # Количество попыток до признания unhealthy
+    # Подключение к сети
+    networks:
+      - quiz-network
+    restart: unless-stopped #перезапускать всегда, кроме явной остановки
+
+  backend:
+    build: . # Сборка из Dockerfile в текущей директории
+    container_name: quiz-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://quiz_user:quiz_password@postgres:5432/quiz_db  
+      - JWT_SECRET=${JWT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+    depends_on:
+      postgres: # Ждать, пока postgres станет healthy
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+    # Подключение к той же сети, что и postgres
+    networks:
+      - quiz-network
+    restart: unless-stopped
+    command: node dist/src/index.js  # Переопределение команды запуска
+
+volumes:
+  postgres_data:
+    name: quiz-postgres-data
+
+networks:
+  quiz-network:
+    name: quiz-network
+    driver: bridge # Тип драйвера (bridge - изолированная сеть)
